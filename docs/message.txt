@@ -1,0 +1,2437 @@
+# INVENTORYPRO
+## Warehouse Management System
+### FULL-STACK TECHNICAL SPECIFICATION
+
+**Document version:** 1.0.0  
+**Project status:** Development Ready  
+**Project type:** Full-Stack Web Application  
+**Architecture:** REST API / Client-Server  
+**Target users:** Warehouse managers, warehouse operators, administrators  
+**Frontend:** React, TypeScript  
+**Backend:** Node.js, Express.js, TypeScript  
+**Database:** PostgreSQL  
+**ORM:** Prisma  
+
+---
+
+# PART 01. PROJECT OVERVIEW
+
+## 1.1. Loyiha haqida
+
+InventoryPro — bu kompaniya yoki tashkilotning ombor faoliyatini raqamli boshqarish uchun mo‘ljallangan web-platforma.
+
+Tizim orqali kompaniya:
+- Omborlarini boshqarishi.
+- Mahsulotlarni ro‘yxatdan o‘tkazishi.
+- Mahsulot kategoriyalarini boshqarishi.
+- Yetkazib beruvchilarni nazorat qilishi.
+- Omborga mahsulot kirimini amalga oshirishi.
+- Ombordan mahsulot chiqimini amalga oshirishi.
+- Omborlar o‘rtasida mahsulot ko‘chirishi.
+- Mahsulot qoldiqlarini real vaqt rejimida kuzatishi.
+- Ombor harakatlari tarixini ko‘rishi.
+- Kam qolgan mahsulotlar haqida ogohlantirish olishi.
+- Hisobotlar va statistikalarni kuzatishi kerak.
+
+## 1.2. Loyihaning asosiy maqsadi
+
+Ombordagi mahsulotlar harakatini qo‘lda yoki Excel orqali boshqarish o‘rniga, barcha jarayonlarni yagona tizim orqali boshqarish.
+
+## 1.3. Loyiha chegaralari (Scope)
+
+Birinchi versiyada quyidagi modullar ishlab chiqiladi:
+
+| № | Modul | Prioritet |
+|---|---|---|
+| 1 | Authentication | Critical |
+| 2 | Dashboard | High |
+| 3 | Products | Critical |
+| 4 | Categories | High |
+| 5 | Warehouses | Critical |
+| 6 | Suppliers | High |
+| 7 | Stock In | Critical |
+| 8 | Stock Out | Critical |
+| 9 | Stock Transfer | High |
+| 10 | Inventory | Critical |
+| 11 | Stock Movements | High |
+| 12 | Low Stock Alerts | High |
+| 13 | Reports | Medium |
+| 14 | User Management | High |
+| 15 | Audit Logs | Medium |
+
+**MVP doirasiga kirmaydi:**
+- Online payment.
+- E-commerce.
+- AI forecasting.
+- Accounting integration.
+- Barcode scanner bilan hardware integratsiyasi.
+- Mobile application.
+- Real-time WebSocket notification.
+
+Ushbu imkoniyatlar keyingi versiyalar uchun qoldiriladi.
+
+## 1.4. Arxitektura
+
+Tizim uchta asosiy qatlamdan iborat:
+
+**Frontend**
+- Foydalanuvchi interfeysi.
+- Ma'lumotlarni ko‘rsatish.
+- Form validation.
+- API bilan integratsiya.
+- Client-side routing.
+- Server state management.
+
+**Backend**
+- REST API.
+- Business logic.
+- Authentication.
+- Authorization.
+- Request validation.
+- Database operations.
+- Error handling.
+
+**Database**
+- Users.
+- Products.
+- Categories.
+- Warehouses.
+- Suppliers.
+- Inventory.
+- Stock Movements.
+- Audit Logs.
+
+Arxitektura:
+
+`React Application → REST API → Express Server → Prisma ORM → PostgreSQL`
+
+---
+
+# PART 02. BUSINESS REQUIREMENTS
+
+## 2.1. Asosiy biznes tushunchalari
+
+### Product
+
+Omborda saqlanadigan mahsulot.
+
+Misollar:
+- Laptop.
+- Keyboard.
+- Mouse.
+- Monitor.
+- Printer.
+- Headphones.
+
+Har bir mahsulot quyidagi xususiyatlarga ega bo‘ladi:
+
+| Field | Type | Description |
+|---|---|---|
+| id | UUID | Unique identifier |
+| name | String | Mahsulot nomi |
+| sku | String | Unique product code |
+| description | String | Tavsif |
+| categoryId | UUID | Kategoriya |
+| supplierId | UUID | Asosiy supplier |
+| purchasePrice | Decimal | Xarid narxi |
+| salePrice | Decimal | Sotuv narxi |
+| unit | Enum | O‘lchov birligi |
+| minStockLevel | Integer | Minimal qoldiq |
+| imageUrl | String? | Mahsulot rasmi |
+| isActive | Boolean | Aktiv holati |
+| createdAt | DateTime | Yaratilgan vaqt |
+| updatedAt | DateTime | Yangilangan vaqt |
+
+**Muhim biznes qoidalari:**
+
+1. Har bir mahsulotning SKU qiymati takrorlanmasligi kerak.
+2. Mahsulot nomi majburiy.
+3. Narxlar manfiy bo‘lishi mumkin emas.
+4. Mahsulot kategoriyasi mavjud bo‘lishi kerak.
+5. Ishlatilayotgan mahsulotni oddiy DELETE bilan o‘chirish mumkin emas.
+6. Mahsulot ishlatilishdan chiqarilganda `isActive = false` qilinadi.
+7. Bir mahsulot bir nechta omborda saqlanishi mumkin.
+
+### Product Units
+
+Mahsulotning o‘lchov birligi quyidagilardan biri bo‘ladi:
+
+- `PIECE` — dona.
+- `KG` — kilogramm.
+- `LITER` — litr.
+- `METER` — metr.
+- `BOX` — quti.
+
+MVP davomida mahsulotning o‘lchov birligi yaratilgandan keyin o‘zgartirilmaydi, chunki bu mavjud ombor operatsiyalarini talqin qilishga ta'sir qilishi mumkin.
+
+## 2.2. Category Management
+
+Kategoriyalar mahsulotlarni guruhlash uchun ishlatiladi.
+
+Misollar:
+
+- Electronics
+- Computers
+- Accessories
+- Office Equipment
+- Furniture
+
+Fieldlar:
+
+- id
+- name
+- description
+- parentId (optional)
+- createdAt
+- updatedAt
+
+Biznes qoidalari:
+
+- Kategoriya nomi unique bo‘lishi kerak.
+- Kategoriya ichida mahsulotlar bo‘lishi mumkin.
+- Mahsulot ishlatayotgan kategoriyani o‘chirish taqiqlanadi.
+- Kategoriyalar uchun hierarchical structure qo‘llab-quvvatlanadi.
+- Parent category o‘ziga yoki o‘zining child kategoriyasiga parent bo‘la olmaydi.
+
+## 2.3. Warehouse Management
+
+Tizim bir nechta omborni boshqarishi kerak.
+
+Masalan:
+
+- Main Warehouse.
+- Tashkent Warehouse.
+- Samarkand Warehouse.
+- Fergana Warehouse.
+
+Warehouse fieldlari:
+
+- id
+- name
+- code
+- address
+- description
+- isActive
+- createdAt
+- updatedAt
+
+Biznes qoidalari:
+
+1. Har bir omborning code qiymati unique bo‘lishi kerak.
+2. Ombor nomi majburiy.
+3. Ombor o‘chirilganda uning inventory tarixi yo‘qolmasligi kerak.
+4. Omborda mahsulotlar mavjud bo‘lsa, omborni deactivate qilish mumkin, ammo hard delete mumkin emas.
+5. Deaktiv omborga yangi mahsulot kirimi, chiqimi yoki transfer amalga oshirilmaydi.
+
+## 2.4. Supplier Management
+
+Supplier — mahsulotlarni yetkazib beruvchi tashkilot yoki shaxs.
+
+Fieldlar:
+
+- id
+- name
+- companyName
+- email
+- phone
+- address
+- description
+- isActive
+- createdAt
+- updatedAt
+
+Biznes qoidalari:
+
+- Supplier nomi majburiy.
+- Email ixtiyoriy, ammo berilgan bo‘lsa valid email bo‘lishi kerak.
+- Telefon raqami xalqaro formatda saqlanishi tavsiya qilinadi.
+- Supplier tarixiy stock-in operatsiyalarida saqlanib qolishi kerak.
+- Supplier o‘chirilmaydi, kerak bo‘lsa deaktiv qilinadi.
+
+## 2.5. Stock In — Mahsulot kirimi
+
+Bu modul orqali omborga yangi mahsulot qabul qilinadi.
+
+Misol:
+
+Omborga quyidagi mahsulotlar keldi:
+
+| Product | Quantity | Unit Price |
+|---|---:|---:|
+| Laptop HP | 10 | 650 |
+| Mouse Logitech | 30 | 15 |
+| Keyboard | 20 | 25 |
+
+Foydalanuvchi:
+1. Omborni tanlaydi.
+2. Yetkazib beruvchini tanlaydi.
+3. Mahsulotlarni tanlaydi.
+4. Har bir mahsulot miqdorini kiritadi.
+5. Xarid narxini kiritadi.
+6. Izoh qo‘shishi mumkin.
+7. Stock In operatsiyasini tasdiqlaydi.
+
+Natija:
+- Inventory miqdori oshadi.
+- Stock Movement yaratiladi.
+- Operatsiya tarixi saqlanadi.
+- Dashboard statistikasi yangilanadi.
+
+**Muhim:** Stock In tasdiqlangandan keyin operatsiya oddiy update orqali o‘zgartirilmaydi. Xatolik bo‘lsa, alohida reversal operatsiyasi yoki tuzatuvchi stock movement orqali to‘g‘rilanadi.
+
+## 2.6. Stock Out — Mahsulot chiqimi
+
+Ombordan mahsulot chiqarish jarayoni.
+
+Misol:
+
+| Product | Available | Requested |
+|---|---:|---:|
+| Laptop HP | 20 | 3 |
+| Mouse Logitech | 50 | 10 |
+
+Foydalanuvchi:
+1. Omborni tanlaydi.
+2. Mahsulotni tanlaydi.
+3. Mavjud miqdorni ko‘radi.
+4. Chiqim miqdorini kiritadi.
+5. Sabab yoki izoh yozadi.
+6. Operatsiyani tasdiqlaydi.
+
+Stock Out sabablari:
+
+- `SALE`
+- `DAMAGE`
+- `INTERNAL_USE`
+- `RETURN_TO_SUPPLIER`
+- `OTHER`
+
+Biznes qoidalari:
+
+1. Chiqim miqdori 0 dan katta bo‘lishi kerak.
+2. Chiqim miqdori mavjud qoldiqdan ko‘p bo‘lishi mumkin emas.
+3. Bir vaqtning o‘zida bir nechta foydalanuvchi operatsiya bajarsa ham negative stock yuzaga kelmasligi kerak.
+4. Har bir chiqim Stock Movement sifatida saqlanadi.
+5. Operatsiyani tasdiqlashdan oldin foydalanuvchi yakuniy ma'lumotlarni ko‘ra olishi kerak.
+
+## 2.7. Stock Transfer — Omborlar o‘rtasida ko‘chirish
+
+Bir ombordagi mahsulotni boshqa omborga o‘tkazish.
+
+Misol:
+
+Tashkent Warehouse → Samarkand Warehouse
+
+| Product | Quantity |
+|---|---:|
+| Laptop HP | 5 |
+| Mouse Logitech | 15 |
+
+Transfer statuslari:
+
+- `PENDING`
+- `COMPLETED`
+- `CANCELLED`
+
+Jarayon:
+
+1. Source warehouse tanlanadi.
+2. Destination warehouse tanlanadi.
+3. Mahsulotlar tanlanadi.
+4. Miqdorlar kiritiladi.
+5. Transfer yaratiladi.
+6. Transfer tasdiqlanadi.
+7. Source omboridagi miqdor kamayadi.
+8. Destination omboridagi miqdor oshadi.
+9. Harakat tarixi saqlanadi.
+
+MVP uchun transfer tasdiqlanganda ikki ombor o‘rtasidagi operatsiya bitta database transaction ichida bajariladi.
+
+**Muhim biznes qoidalari:**
+
+- Source va destination bir xil bo‘lishi mumkin emas.
+- Mahsulot source omborda yetarli bo‘lishi kerak.
+- Transferda bir xil mahsulot bir necha marta takrorlanmasligi kerak.
+- Transfer ikkala omborda bir vaqtda aks etishi kerak.
+- Bir qismi bajarilib, ikkinchi qismi bajarilmay qolishiga yo‘l qo‘yilmaydi.
+
+## 2.8. Inventory Management
+
+Inventory — har bir mahsulotning har bir ombordagi joriy qoldig‘i.
+
+Masalan:
+
+| Product | Main | Tashkent | Samarkand | Total |
+|---|---:|---:|---:|---:|
+| Laptop | 20 | 10 | 5 | 35 |
+| Mouse | 50 | 25 | 10 | 85 |
+| Keyboard | 15 | 30 | 20 | 65 |
+
+Asosiy formula:
+
+`Available Stock = Total Stock In - Total Stock Out + Transfer In - Transfer Out`
+
+Tizim har bir product va warehouse kombinatsiyasi uchun alohida inventory yozuvini saqlaydi.
+
+Inventory statuslari:
+
+- `IN_STOCK` — normal qoldiq.
+- `LOW_STOCK` — minimal chegaraga yetgan yoki undan past.
+- `OUT_OF_STOCK` — qoldiq 0.
+
+Status avtomatik hisoblanadi.
+
+## 2.9. Low Stock Alerts
+
+Har bir mahsulot uchun `minStockLevel` belgilanadi.
+
+Misol:
+
+- Product: Mouse Logitech.
+- Minimum stock: 10.
+- Available stock: 7.
+
+Natija: LOW_STOCK.
+
+Agar mavjud miqdor 0 bo‘lsa: OUT_OF_STOCK.
+
+Dashboard va Inventory sahifasida ushbu mahsulotlar alohida ko‘rsatiladi.
+
+## 2.10. Reports & Analytics
+
+Tizim quyidagi hisobotlarni taqdim etishi kerak:
+
+1. Umumiy mahsulotlar soni.
+2. Omborlar soni.
+3. Umumiy stock quantity.
+4. Inventory qiymati.
+5. Stock In statistikasi.
+6. Stock Out statistikasi.
+7. Eng ko‘p harakatlangan mahsulotlar.
+8. Kam qolgan mahsulotlar.
+9. Omborlar bo‘yicha mahsulotlar taqsimoti.
+10. Sana oralig‘i bo‘yicha operatsiyalar.
+
+Hisobotlarda sana oralig‘i bo‘yicha filter bo‘lishi kerak.
+
+Inventory qiymati:
+
+`Inventory Value = SUM(Available Quantity × Average Cost)`
+
+MVP uchun weighted average cost usuli ishlatiladi. Stock In paytida mahsulotning o‘rtacha xarid narxi yangilanadi. Transfer esa mahsulotning umumiy qiymatini o‘zgartirmaydi.
+
+---
+
+# PART 03. USER ROLES & PERMISSIONS
+
+Tizimda 3 ta asosiy role bo‘ladi.
+
+## 3.1. ADMIN
+
+Tizimning to‘liq boshqaruvchisi.
+
+Huquqlari:
+- Barcha modullarga kirish.
+- User yaratish.
+- User tahrirlash.
+- Role tayinlash.
+- Mahsulot yaratish va boshqarish.
+- Ombor yaratish va boshqarish.
+- Supplier boshqarish.
+- Barcha operatsiyalarni ko‘rish.
+- Hisobotlarni ko‘rish.
+- Audit loglarni ko‘rish.
+
+## 3.2. MANAGER
+
+Ombor boshqaruvchisi.
+
+Huquqlari:
+- Dashboard ko‘rish.
+- Mahsulotlarni ko‘rish.
+- Mahsulot yaratish va tahrirlash.
+- Kategoriyalarni boshqarish.
+- Supplierlarni boshqarish.
+- Ombor qoldiqlarini ko‘rish.
+- Stock In yaratish va tasdiqlash.
+- Stock Out yaratish va tasdiqlash.
+- Transfer yaratish va tasdiqlash.
+- Reports ko‘rish.
+
+Manager user role boshqara olmaydi.
+
+## 3.3. OPERATOR
+
+Oddiy ombor operatori.
+
+Huquqlari:
+- Dashboard ko‘rish.
+- Mahsulotlarni ko‘rish.
+- Ombor qoldiqlarini ko‘rish.
+- Stock In yaratish.
+- Stock Out yaratish.
+- Transfer yaratish.
+- O‘z operatsiyalari tarixini ko‘rish.
+
+Operator:
+- Mahsulot o‘chira olmaydi.
+- Supplier boshqara olmaydi.
+- User boshqara olmaydi.
+- Role o‘zgartira olmaydi.
+- Hisobotlarni eksport qila olmaydi.
+
+## 3.4. Permission Matrix
+
+| Module | Admin | Manager | Operator |
+|---|---|---|---|
+| Dashboard | Full | View | View |
+| Products | Full | Full | View |
+| Categories | Full | Full | View |
+| Warehouses | Full | View | View |
+| Suppliers | Full | Full | View |
+| Inventory | Full | View | View |
+| Stock In | Full | Full | Create |
+| Stock Out | Full | Full | Create |
+| Transfer | Full | Full | Create |
+| Reports | Full | View | No Access |
+| Users | Full | No Access | No Access |
+| Audit Logs | Full | No Access | No Access |
+
+**Eslatma:** Frontend'dagi permission tekshiruvlari faqat interfeysni boshqarish uchun. Haqiqiy authorization backendda bajarilishi shart.
+
+---
+
+# PART 04. FRONTEND SPECIFICATION
+
+## 4.1. Frontend texnologiyalari
+
+| Technology | Purpose |
+|---|---|
+| React | UI development |
+| TypeScript | Type safety |
+| Vite | Build tool |
+| React Router DOM | Routing |
+| Axios | HTTP requests |
+| TanStack Query | Server state |
+| Redux Toolkit | Client state |
+| React Hook Form | Form management |
+| Zod | Form validation |
+| Tailwind CSS | Styling |
+| shadcn/ui | UI components |
+| Lucide React | Icons |
+| Recharts | Charts |
+| React Hot Toast / Sonner | Notifications |
+| date-fns | Date formatting |
+
+**Muhim arxitektura qarori:**
+
+TanStack Query backenddan keladigan ma'lumotlar uchun ishlatiladi.
+
+Redux Toolkit esa global client state uchun ishlatiladi.
+
+Bitta ma'lumotni bir vaqtning o‘zida Redux va TanStack Query'da saqlashga yo‘l qo‘yilmaydi.
+
+Masalan:
+- Products API data → TanStack Query.
+- Current user → Redux yoki Auth Context.
+- Sidebar holati → Redux yoki local state.
+- Form inputlari → React Hook Form.
+
+## 4.2. Frontend folder structure
+
+```text
+src/
+├── app/
+│   ├── App.tsx
+│   ├── router.tsx
+│   ├── providers.tsx
+│   └── store.ts
+│
+├── assets/
+│
+├── components/
+│   ├── ui/
+│   ├── common/
+│   ├── layout/
+│   └── feedback/
+│
+├── features/
+│   ├── auth/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   └── types/
+│   │
+│   ├── dashboard/
+│   ├── products/
+│   ├── categories/
+│   ├── warehouses/
+│   ├── suppliers/
+│   ├── inventory/
+│   ├── stock-in/
+│   ├── stock-out/
+│   ├── transfers/
+│   ├── movements/
+│   ├── reports/
+│   └── users/
+│
+├── hooks/
+│
+├── lib/
+│   ├── axios.ts
+│   ├── query-client.ts
+│   └── utils.ts
+│
+├── services/
+│
+├── types/
+│
+├── constants/
+│
+├── styles/
+│
+└── main.tsx
+```
+
+Feature-based architecture talab qilinadi.
+
+Har bir feature o‘zining API, components, hooks, pages va types qismlariga ega bo‘ladi.
+
+## 4.3. Application Layout
+
+Tizimning asosiy layouti quyidagilardan iborat:
+
+**Sidebar:**
+- Logo: InventoryPro.
+- Dashboard.
+- Products.
+- Categories.
+- Warehouses.
+- Suppliers.
+- Inventory.
+- Stock In.
+- Stock Out.
+- Transfers.
+- Movements.
+- Reports.
+- Users (faqat Admin).
+
+**Header:**
+- Page title.
+- Breadcrumb.
+- Search (global search, keyingi bosqichda).
+- Notification icon.
+- User avatar.
+- User name.
+- Role.
+- Profile dropdown.
+- Logout.
+
+**Main Content:**
+- Sahifaga tegishli ma'lumotlar.
+- Tables.
+- Forms.
+- Charts.
+- Filters.
+- Pagination.
+
+Sidebar responsive bo‘lishi kerak.
+
+Desktop: doimiy sidebar.
+
+Tablet: collapsible sidebar.
+
+Mobile: drawer navigation.
+
+## 4.4. Frontend Routes
+
+| Route | Page | Permission |
+|---|---|---|
+| /login | Login | Public |
+| /dashboard | Dashboard | Authenticated |
+| /products | Products | Authenticated |
+| /products/create | Create Product | Admin, Manager |
+| /products/:id | Product Details | Authenticated |
+| /products/:id/edit | Edit Product | Admin, Manager |
+| /categories | Categories | Authenticated |
+| /warehouses | Warehouses | Authenticated |
+| /warehouses/:id | Warehouse Details | Authenticated |
+| /suppliers | Suppliers | Authenticated |
+| /inventory | Inventory | Authenticated |
+| /stock-in | Stock In List | Authenticated |
+| /stock-in/create | Create Stock In | Admin, Manager, Operator |
+| /stock-in/:id | Stock In Details | Authenticated |
+| /stock-out | Stock Out List | Authenticated |
+| /stock-out/create | Create Stock Out | Admin, Manager, Operator |
+| /transfers | Transfers | Authenticated |
+| /transfers/create | Create Transfer | Admin, Manager, Operator |
+| /movements | Stock Movements | Authenticated |
+| /reports | Reports | Admin, Manager |
+| /users | User Management | Admin |
+| /profile | User Profile | Authenticated |
+
+Frontend route guard foydalanuvchining role va authentication holatini tekshiradi.
+
+## 4.5. Login Page
+
+UI elementlari:
+- InventoryPro logo.
+- Email input.
+- Password input.
+- Show/hide password.
+- Remember me (ixtiyoriy).
+- Login button.
+- Loading state.
+- Error message.
+
+Validation:
+- Email majburiy.
+- Email formati to‘g‘ri bo‘lishi kerak.
+- Password bo‘sh bo‘lmasligi kerak.
+
+Login muvaffaqiyatli bo‘lsa:
+- User ma'lumotlari saqlanadi.
+- Auth holati yangilanadi.
+- Dashboard sahifasiga redirect qilinadi.
+
+401 xatolikda foydalanuvchiga noto‘g‘ri login yoki parol haqida xabar beriladi.
+
+## 4.6. Dashboard Page
+
+Dashboard tizimning asosiy sahifasi.
+
+### Statistics Cards
+
+Quyidagi kartalar bo‘lishi kerak:
+
+1. Total Products.
+2. Total Warehouses.
+3. Total Stock Quantity.
+4. Total Inventory Value.
+5. Low Stock Products.
+6. Out of Stock Products.
+
+Har bir karta:
+- Icon.
+- Title.
+- Value.
+- Qo‘shimcha izoh.
+- Loading skeleton.
+
+### Charts
+
+1. Stock In vs Stock Out — Line/Bar Chart.
+2. Inventory by Category — Pie Chart.
+3. Warehouse Stock Distribution — Bar Chart.
+4. Recent Movements — Table.
+
+### Low Stock Section
+
+Kam qolgan mahsulotlar jadvali:
+
+- Product Name.
+- SKU.
+- Warehouse.
+- Current Stock.
+- Minimum Stock.
+- Status.
+
+Dashboard ma'lumotlari backenddan olinadi. Frontend statistikalarni barcha mahsulotlarni yuklab, o‘zi hisoblamasligi kerak.
+
+## 4.7. Products Page
+
+Asosiy elementlar:
+- Page title.
+- Add Product button.
+- Search input.
+- Category filter.
+- Supplier filter.
+- Status filter.
+- Products table.
+- Pagination.
+
+Table ustunlari:
+
+| Column | Description |
+|---|---|
+| Image | Mahsulot rasmi |
+| Name | Mahsulot nomi |
+| SKU | Mahsulot kodi |
+| Category | Kategoriya |
+| Supplier | Supplier |
+| Purchase Price | Xarid narxi |
+| Sale Price | Sotuv narxi |
+| Status | Active / Inactive |
+| Actions | View / Edit / Deactivate |
+
+Search:
+- Product name.
+- SKU.
+
+Filter:
+- Category.
+- Supplier.
+- Active status.
+
+Sorting:
+- Name.
+- Purchase price.
+- Sale price.
+- Created date.
+
+### Create Product Modal/Page
+
+Fields:
+- Product Name.
+- SKU.
+- Description.
+- Category.
+- Supplier.
+- Purchase Price.
+- Sale Price.
+- Unit.
+- Minimum Stock.
+- Product Image.
+
+Form talablar:
+- Name majburiy.
+- SKU majburiy.
+- Narxlar manfiy bo‘lmasligi kerak.
+- Category tanlanishi kerak.
+- Unit tanlanishi kerak.
+- Rasm ixtiyoriy.
+
+Muvaffaqiyatli yaratilganda:
+- Modal yopiladi yoki detail sahifasiga o'tiladi.
+- Success toast ko‘rsatiladi.
+- Products query invalidation qilinadi.
+
+## 4.8. Product Details Page
+
+Mahsulot haqida to‘liq ma'lumot.
+
+Sections:
+
+**General Information**
+- Image.
+- Name.
+- SKU.
+- Category.
+- Supplier.
+- Description.
+- Purchase price.
+- Sale price.
+- Unit.
+- Status.
+
+**Stock Overview**
+- Total quantity.
+- Warehouse distribution.
+- Low stock status.
+
+**Movement History**
+- Date.
+- Warehouse.
+- Movement type.
+- Quantity.
+- Reference number.
+- User.
+
+## 4.9. Categories Page
+
+- Categories table.
+- Create Category.
+- Edit Category.
+- Deactivate Category.
+- Search.
+- Parent category selection.
+
+Table:
+- Name.
+- Parent Category.
+- Products Count.
+- Status.
+- Created At.
+- Actions.
+
+Category detail sahifasi MVP uchun majburiy emas.
+
+## 4.10. Warehouses Page
+
+Warehouse cards yoki table ko‘rinishida chiqariladi.
+
+Fields:
+- Warehouse Name.
+- Warehouse Code.
+- Address.
+- Description.
+- Status.
+
+Actions:
+- View.
+- Edit.
+- Deactivate.
+
+Warehouse Details sahifasi:
+- Warehouse information.
+- Total products.
+- Total stock.
+- Inventory table.
+- Recent movements.
+
+## 4.11. Suppliers Page
+
+Table:
+- Supplier Name.
+- Company.
+- Email.
+- Phone.
+- Address.
+- Status.
+- Actions.
+
+Create/Edit form:
+- Name.
+- Company Name.
+- Email.
+- Phone.
+- Address.
+- Description.
+
+## 4.12. Inventory Page
+
+Inventory modulida mahsulotlarning joriy qoldig‘i ko‘rsatiladi.
+
+Table:
+
+| Column | Description |
+|---|---|
+| Product | Mahsulot nomi |
+| SKU | Mahsulot kodi |
+| Warehouse | Ombor |
+| Quantity | Joriy qoldiq |
+| Minimum Stock | Minimal qoldiq |
+| Unit | O‘lchov birligi |
+| Status | Stock status |
+
+Filters:
+- Warehouse.
+- Category.
+- Product.
+- Stock status.
+
+Search:
+- Product name.
+- SKU.
+
+Inventory sahifasida ma'lumotlar backenddan pagination bilan olinadi.
+
+## 4.13. Stock In Page
+
+Stock In list:
+- Reference Number.
+- Warehouse.
+- Supplier.
+- Total Items.
+- Total Quantity.
+- Total Cost.
+- Created By.
+- Date.
+
+Create Stock In sahifasi:
+
+**Step 1 — Basic Information**
+- Warehouse.
+- Supplier.
+- Reference Number (backend yaratishi mumkin).
+- Note.
+
+**Step 2 — Products**
+- Product selector.
+- Quantity.
+- Unit Cost.
+- Total Cost.
+
+**Step 3 — Confirmation**
+- Tanlangan ombor.
+- Supplier.
+- Mahsulotlar.
+- Umumiy miqdor.
+- Umumiy xarajat.
+
+**Step 4 — Submit**
+
+Backend operatsiyani tasdiqlaydi.
+
+Frontend submitdan oldin umumiy summani hisoblab ko‘rsatadi, ammo yakuniy biznes hisob-kitob backendda bajariladi.
+
+## 4.14. Stock Out Page
+
+Stock Out list:
+- Reference Number.
+- Warehouse.
+- Total Items.
+- Total Quantity.
+- Reason.
+- Created By.
+- Date.
+
+Create Stock Out:
+- Warehouse selector.
+- Product selector.
+- Available quantity.
+- Requested quantity.
+- Reason.
+- Note.
+- Confirmation.
+
+Agar foydalanuvchi mavjud miqdordan ko‘p mahsulot chiqarmoqchi bo‘lsa, frontend ogohlantiradi.
+
+Lekin yakuniy tekshiruv backendda amalga oshiriladi.
+
+## 4.15. Transfers Page
+
+Transfers list:
+- Reference Number.
+- Source Warehouse.
+- Destination Warehouse.
+- Total Items.
+- Total Quantity.
+- Status.
+- Created By.
+- Date.
+
+Create Transfer:
+- Source warehouse.
+- Destination warehouse.
+- Products.
+- Quantity.
+- Note.
+- Confirmation.
+
+Frontend source va destination bir xil bo‘lishini oldindan bloklaydi.
+
+## 4.16. Stock Movements Page
+
+Bu sahifada barcha inventory harakatlari ko‘rsatiladi.
+
+Movement type:
+- `STOCK_IN`
+- `STOCK_OUT`
+- `TRANSFER_IN`
+- `TRANSFER_OUT`
+- `ADJUSTMENT`
+- `REVERSAL`
+
+Table:
+- Reference Number.
+- Product.
+- Warehouse.
+- Movement Type.
+- Quantity.
+- Unit Cost.
+- Created By.
+- Created At.
+
+Filters:
+- Product.
+- Warehouse.
+- Movement Type.
+- User.
+- Date Range.
+
+Movement tarixini o‘zgartirish yoki o‘chirish imkoniyati bo‘lmaydi.
+
+## 4.17. Reports Page
+
+Reports quyidagilardan iborat:
+
+- Inventory Summary.
+- Stock In Report.
+- Stock Out Report.
+- Warehouse Report.
+- Low Stock Report.
+
+Har bir hisobotda:
+- Sana oralig‘i.
+- Warehouse filter.
+- Search.
+- Export CSV.
+
+PDF export MVP uchun majburiy emas.
+
+## 4.18. User Management
+
+Faqat Admin uchun.
+
+Table:
+- Full Name.
+- Email.
+- Role.
+- Status.
+- Created At.
+- Actions.
+
+Actions:
+- Create User.
+- Edit User.
+- Change Role.
+- Deactivate User.
+
+Admin o‘z akkauntini tasodifan deaktiv qilishiga yo‘l qo‘yilmasligi kerak.
+
+## 4.19. Global UI States
+
+Barcha sahifalarda quyidagi holatlar ishlab chiqilishi shart:
+
+**Loading State**
+- Skeleton.
+- Spinner.
+- Button loading.
+
+**Empty State**
+- Ma'lumot mavjud emas.
+- Empty illustration yoki icon.
+- Action button.
+
+**Error State**
+- Error message.
+- Retry button.
+
+**Success State**
+- Toast notification.
+
+**Form State**
+- Validation errors.
+- Disabled submit.
+- Submission loading.
+
+**Responsive State**
+- Desktop.
+- Tablet.
+- Mobile.
+
+Har bir API so‘rovi uchun foydalanuvchiga tushunarli holat ko‘rsatilishi kerak.
+
+---
+
+# PART 05. BACKEND SPECIFICATION
+
+## 5.1. Backend texnologiyalari
+
+| Technology | Purpose |
+|---|---|
+| Node.js | Runtime |
+| Express.js | HTTP framework |
+| TypeScript | Type safety |
+| PostgreSQL | Database |
+| Prisma ORM | Database access |
+| JWT | Authentication |
+| bcrypt | Password hashing |
+| Zod | Validation |
+| Helmet | HTTP security |
+| CORS | Cross-origin access |
+| Multer | File upload |
+| Swagger | API documentation |
+| dotenv | Environment variables |
+
+## 5.2. Backend folder structure
+
+```text
+src/
+├── config/
+│   ├── env.ts
+│   ├── database.ts
+│   └── swagger.ts
+│
+├── modules/
+│   ├── auth/
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── auth.routes.ts
+│   │   └── auth.validation.ts
+│   │
+│   ├── users/
+│   ├── products/
+│   ├── categories/
+│   ├── warehouses/
+│   ├── suppliers/
+│   ├── inventory/
+│   ├── stock-in/
+│   ├── stock-out/
+│   ├── transfers/
+│   ├── movements/
+│   ├── reports/
+│   └── audit-logs/
+│
+├── middlewares/
+│   ├── authenticate.ts
+│   ├── authorize.ts
+│   ├── validate.ts
+│   ├── error-handler.ts
+│   └── not-found.ts
+│
+├── utils/
+│   ├── api-response.ts
+│   ├── app-error.ts
+│   ├── pagination.ts
+│   └── reference-generator.ts
+│
+├── types/
+│
+├── app.ts
+└── server.ts
+```
+
+Har bir modul quyidagi qatlamlarga ajratiladi:
+
+**Routes:** endpointlarni belgilaydi.
+
+**Controller:** HTTP request va response bilan ishlaydi.
+
+**Service:** biznes logikasini bajaradi.
+
+**Validation:** request ma'lumotlarini tekshiradi.
+
+Database operatsiyalari Service orqali bajariladi.
+
+Controller ichida biznes logika yozish taqiqlanadi.
+
+## 5.3. API Base URL
+
+Development:
+
+`http://localhost:5050/api/v1`
+
+Production:
+
+`https://api.inventorypro.example.com/api/v1`
+
+Barcha endpointlar `/api/v1` prefiksidan boshlanadi.
+
+## 5.4. Authentication
+
+Authentication JWT asosida ishlaydi.
+
+Login:
+
+`POST /auth/login`
+
+Request:
+
+```json
+{
+  "email": "admin@inventorypro.com",
+  "password": "Admin123!"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": "uuid",
+      "fullName": "Admin User",
+      "email": "admin@inventorypro.com",
+      "role": "ADMIN"
+    },
+    "accessToken": "jwt-token"
+  }
+}
+```
+
+MVP authentication talablari:
+
+- Password bcrypt bilan hash qilinadi.
+- Access token muddati 15 daqiqa.
+- Refresh token muddati 7 kun.
+- Refresh token HttpOnly, Secure, SameSite cookie orqali yuboriladi.
+- Refresh tokenlar serverda hash ko‘rinishida saqlanadi.
+- Logout vaqtida refresh token bekor qilinadi.
+- Access token Authorization header orqali yuboriladi.
+- Frontend access tokenni xavfsiz boshqarishi kerak.
+- Production'da HTTPS majburiy.
+
+Endpoints:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | /auth/login | Login |
+| POST | /auth/refresh | Refresh token |
+| POST | /auth/logout | Logout |
+| GET | /auth/me | Current user |
+
+## 5.5. Users Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /users | User list |
+| GET | /users/:id | User details |
+| POST | /users | Create user |
+| PATCH | /users/:id | Update user |
+| PATCH | /users/:id/role | Change role |
+| PATCH | /users/:id/status | Activate/deactivate |
+
+Faqat Admin user management imkoniyatlariga ega.
+
+## 5.6. Products Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /products | Products list |
+| GET | /products/:id | Product details |
+| POST | /products | Create product |
+| PATCH | /products/:id | Update product |
+| PATCH | /products/:id/status | Activate/deactivate |
+| GET | /products/:id/movements | Product movement history |
+
+GET `/products` query parameters:
+
+```text
+?page=1
+&limit=10
+&search=laptop
+&categoryId=uuid
+&supplierId=uuid
+&isActive=true
+&sortBy=name
+&sortOrder=asc
+```
+
+Backend:
+- Pagination.
+- Search.
+- Filtering.
+- Sorting.
+- SKU uniqueness validation.
+- Category existence validation.
+- Supplier existence validation.
+- Decimal price validation.
+
+## 5.7. Categories Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /categories | Categories list |
+| GET | /categories/:id | Category details |
+| POST | /categories | Create category |
+| PATCH | /categories/:id | Update category |
+| PATCH | /categories/:id/status | Activate/deactivate |
+
+## 5.8. Warehouses Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /warehouses | Warehouse list |
+| GET | /warehouses/:id | Warehouse details |
+| POST | /warehouses | Create warehouse |
+| PATCH | /warehouses/:id | Update warehouse |
+| PATCH | /warehouses/:id/status | Activate/deactivate |
+| GET | /warehouses/:id/inventory | Warehouse inventory |
+| GET | /warehouses/:id/movements | Warehouse movements |
+
+## 5.9. Suppliers Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /suppliers | Supplier list |
+| GET | /suppliers/:id | Supplier details |
+| POST | /suppliers | Create supplier |
+| PATCH | /suppliers/:id | Update supplier |
+| PATCH | /suppliers/:id/status | Activate/deactivate |
+
+## 5.10. Inventory Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /inventory | Inventory list |
+| GET | /inventory/:id | Inventory details |
+| GET | /inventory/summary | Inventory summary |
+| GET | /inventory/low-stock | Low stock products |
+| GET | /inventory/out-of-stock | Out of stock products |
+| GET | /inventory/by-warehouse/:warehouseId | Warehouse inventory |
+
+Inventory API query parameters:
+
+```text
+?page=1
+&limit=10
+&search=mouse
+&warehouseId=uuid
+&categoryId=uuid
+&status=LOW_STOCK
+```
+
+Inventory quantity faqat Stock In, Stock Out, Transfer va ruxsat etilgan Adjustment operatsiyalari orqali o‘zgaradi.
+
+Frontend inventory quantity'ni bevosita o‘zgartira olmaydi.
+
+## 5.11. Stock In Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /stock-in | Stock In list |
+| GET | /stock-in/:id | Stock In details |
+| POST | /stock-in | Create Stock In |
+| POST | /stock-in/:id/confirm | Confirm Stock In |
+
+Request:
+
+```json
+{
+  "warehouseId": "uuid",
+  "supplierId": "uuid",
+  "note": "Monthly stock purchase",
+  "items": [
+    {
+      "productId": "uuid",
+      "quantity": 10,
+      "unitCost": 650
+    },
+    {
+      "productId": "uuid",
+      "quantity": 20,
+      "unitCost": 25
+    }
+  ]
+}
+```
+
+Backend bajaradigan ishlar:
+
+1. User authentication.
+2. User authorization.
+3. Warehouse validation.
+4. Supplier validation.
+5. Product validation.
+6. Quantity validation.
+7. Unit cost validation.
+8. Duplicate productlarni birlashtirish yoki rad etish.
+9. Total cost hisoblash.
+10. Stock In record yaratish.
+11. Stock In items yaratish.
+12. Inventory quantity yangilash.
+13. Stock Movement yaratish.
+14. Audit log yaratish.
+
+Yuqoridagi operatsiyalar bitta database transaction ichida bajarilishi kerak.
+
+## 5.12. Stock Out Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /stock-out | Stock Out list |
+| GET | /stock-out/:id | Stock Out details |
+| POST | /stock-out | Create Stock Out |
+| POST | /stock-out/:id/confirm | Confirm Stock Out |
+
+Request:
+
+```json
+{
+  "warehouseId": "uuid",
+  "reason": "SALE",
+  "note": "Customer order",
+  "items": [
+    {
+      "productId": "uuid",
+      "quantity": 3
+    }
+  ]
+}
+```
+
+Backend tekshiruvlari:
+
+- Warehouse mavjudmi?
+- Warehouse aktivmi?
+- Product mavjudmi?
+- Product aktivmi?
+- Quantity musbatmi?
+- Inventory yetarlimi?
+- User ruxsatga egami?
+
+Tasdiqlangandan keyin:
+- Stock Out yaratiladi.
+- Inventory kamayadi.
+- Stock Movement yaratiladi.
+- Audit log yoziladi.
+
+## 5.13. Transfer Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /transfers | Transfer list |
+| GET | /transfers/:id | Transfer details |
+| POST | /transfers | Create transfer |
+| POST | /transfers/:id/confirm | Confirm transfer |
+| POST | /transfers/:id/cancel | Cancel pending transfer |
+
+Request:
+
+```json
+{
+  "sourceWarehouseId": "uuid",
+  "destinationWarehouseId": "uuid",
+  "note": "Warehouse redistribution",
+  "items": [
+    {
+      "productId": "uuid",
+      "quantity": 5
+    }
+  ]
+}
+```
+
+Transfer confirmation bitta database transaction ichida bajarilishi kerak.
+
+Agar source omborda miqdor yetarli bo‘lmasa, butun transaction rollback qilinadi.
+
+## 5.14. Stock Movements Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /movements | All movements |
+| GET | /movements/:id | Movement details |
+
+Movement recordlar o‘zgarmas tarixiy yozuvlar hisoblanadi.
+
+Har bir movement quyidagilarni saqlaydi:
+
+- Product.
+- Warehouse.
+- Movement type.
+- Quantity.
+- Unit cost.
+- Reference type.
+- Reference ID.
+- Created by.
+- Created at.
+
+## 5.15. Dashboard Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /dashboard/summary | Statistics |
+| GET | /dashboard/stock-trends | Stock In/Out trends |
+| GET | /dashboard/category-distribution | Category statistics |
+| GET | /dashboard/warehouse-distribution | Warehouse statistics |
+| GET | /dashboard/recent-movements | Recent movements |
+
+Backend barcha statistikalarni database orqali hisoblaydi.
+
+## 5.16. Reports Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /reports/inventory | Inventory report |
+| GET | /reports/stock-in | Stock In report |
+| GET | /reports/stock-out | Stock Out report |
+| GET | /reports/warehouse | Warehouse report |
+| GET | /reports/low-stock | Low stock report |
+| GET | /reports/export | CSV export |
+
+Report query parameters:
+
+```text
+?startDate=2026-01-01
+&endDate=2026-01-31
+&warehouseId=uuid
+&format=csv
+```
+
+Sana oralig‘i tekshirilishi va maksimal export hajmi cheklanishi kerak.
+
+## 5.17. Audit Logs Module
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /audit-logs | Audit log list |
+| GET | /audit-logs/:id | Audit log details |
+
+Audit log quyidagi ma'lumotlarni saqlaydi:
+
+- User ID.
+- Action.
+- Entity.
+- Entity ID.
+- Old values.
+- New values.
+- IP address.
+- Timestamp.
+
+Faqat Admin audit loglarni ko‘ra oladi.
+
+---
+
+# PART 06. DATABASE DESIGN
+
+## 6.1. Database Models
+
+Asosiy jadvallar:
+
+1. User
+2. RefreshToken
+3. Product
+4. Category
+5. Warehouse
+6. Supplier
+7. Inventory
+8. StockIn
+9. StockInItem
+10. StockOut
+11. StockOutItem
+12. StockTransfer
+13. StockTransferItem
+14. StockMovement
+15. AuditLog
+
+## 6.2. User Model
+
+```prisma
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+}
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(OPERATOR)
+  isActive     Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+```
+
+## 6.3. Product Model
+
+```prisma
+enum ProductUnit {
+  PIECE
+  KG
+  LITER
+  METER
+  BOX
+}
+
+model Product {
+  id             String      @id @default(uuid())
+  name           String
+  sku            String      @unique
+  description    String?
+  categoryId     String
+  supplierId     String?
+  purchasePrice  Decimal     @db.Decimal(12, 2)
+  salePrice      Decimal     @db.Decimal(12, 2)
+  unit           ProductUnit
+  minStockLevel  Int         @default(0)
+  imageUrl       String?
+  isActive       Boolean     @default(true)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+```
+
+## 6.4. Inventory Model
+
+```prisma
+model Inventory {
+  id              String   @id @default(uuid())
+  productId       String
+  warehouseId     String
+  quantity        Int      @default(0)
+  averageUnitCost Decimal  @default(0) @db.Decimal(12, 2)
+
+  updatedAt       DateTime @updatedAt
+
+  @@unique([productId, warehouseId])
+  @@index([warehouseId])
+}
+```
+
+## 6.5. Stock Movement Model
+
+```prisma
+enum MovementType {
+  STOCK_IN
+  STOCK_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  REVERSAL
+}
+
+model StockMovement {
+  id            String       @id @default(uuid())
+  productId     String
+  warehouseId   String
+  type          MovementType
+  quantity      Int
+  unitCost      Decimal?     @db.Decimal(12, 2)
+  referenceType String
+  referenceId   String
+  createdById   String
+  createdAt     DateTime     @default(now())
+
+  @@index([productId, warehouseId])
+  @@index([createdAt])
+}
+```
+
+**Muhim:** Yuqoridagi Prisma modellar asosiy model namunalari. Backend dasturchisi barcha relationlar, foreign keylar, onDelete strategiyalari, indekslar va qolgan modellarni to‘liq ishlab chiqishi shart.
+
+## 6.6. Database Relations
+
+```text
+User
+ ├── StockIn
+ ├── StockOut
+ ├── StockTransfer
+ ├── StockMovement
+ └── AuditLog
+
+Category
+ └── Product
+
+Supplier
+ ├── Product
+ └── StockIn
+
+Product
+ ├── Inventory
+ ├── StockInItem
+ ├── StockOutItem
+ ├── StockTransferItem
+ └── StockMovement
+
+Warehouse
+ ├── Inventory
+ ├── StockIn
+ ├── StockOut
+ ├── StockTransfer (Source)
+ ├── StockTransfer (Destination)
+ └── StockMovement
+```
+
+## 6.7. Database Constraints
+
+Quyidagi cheklovlar database darajasida ham himoyalanishi kerak:
+
+- Product SKU unique.
+- User email unique.
+- Warehouse code unique.
+- Inventory productId + warehouseId unique.
+- Category parent relation valid.
+- Quantity manfiy emas.
+- Price manfiy emas.
+- Foreign key integrity.
+- Stock movement quantity musbat.
+
+**Inventory quantity uchun database CHECK constraint qo‘llash kerak.**
+
+---
+
+# PART 07. API CONTRACT
+
+Bu bo‘lim Frontend va Backend dasturchilari o‘rtasidagi asosiy kelishuv hisoblanadi.
+
+## 7.1. Standard Success Response
+
+Barcha muvaffaqiyatli response'lar bir xil formatda bo‘lishi kerak.
+
+```json
+{
+  "success": true,
+  "message": "Products retrieved successfully",
+  "data": []
+}
+```
+
+## 7.2. Standard Error Response
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Invalid email address"
+    }
+  ]
+}
+```
+
+## 7.3. HTTP Status Codes
+
+| Code | Meaning |
+|---|---|
+| 200 | OK |
+| 201 | Created |
+| 204 | No Content |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Not Found |
+| 409 | Conflict |
+| 422 | Validation Error |
+| 429 | Too Many Requests |
+| 500 | Internal Server Error |
+
+## 7.4. Pagination Response
+
+```json
+{
+  "success": true,
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 100,
+    "totalPages": 10
+  }
+}
+```
+
+## 7.5. Frontend Integration Rules
+
+Frontend dasturchisi:
+
+1. Barcha API requestlarni Axios orqali yuboradi.
+2. API base URL `.env` orqali boshqariladi.
+3. Token kerakli requestlarda avtomatik yuboriladi.
+4. 401 holatida refresh token mexanizmi ishlaydi.
+5. Refresh muvaffaqiyatsiz bo‘lsa, foydalanuvchi logout qilinadi.
+6. Barcha API response type'lari TypeScript orqali belgilanadi.
+7. Error handling markazlashtiriladi.
+8. Server state TanStack Query orqali boshqariladi.
+
+Environment:
+
+```env
+VITE_API_URL=http://localhost:5050/api/v1
+```
+
+Axios configuration:
+
+```typescript
+import axios from "axios";
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json"
+  }
+});
+```
+
+Token interceptor va refresh mexanizmi alohida ishlab chiqiladi.
+
+---
+
+# PART 08. BUSINESS WORKFLOWS
+
+## 8.1. Product Creation Workflow
+
+```text
+User
+  |
+  v
+Create Product Form
+  |
+  v
+Frontend Validation
+  |
+  v
+POST /products
+  |
+  v
+Backend Validation
+  |
+  v
+Check SKU Uniqueness
+  |
+  v
+Save to PostgreSQL
+  |
+  v
+Return Product
+  |
+  v
+Update Products Query
+  |
+  v
+Success Notification
+```
+
+## 8.2. Stock In Workflow
+
+```text
+User selects warehouse
+        |
+        v
+User selects supplier
+        |
+        v
+User adds products
+        |
+        v
+User enters quantities
+        |
+        v
+POST /stock-in
+        |
+        v
+Backend validates data
+        |
+        v
+Database Transaction
+        |
+        +---- Create StockIn
+        |
+        +---- Create StockInItems
+        |
+        +---- Update Inventory
+        |
+        +---- Create Movements
+        |
+        +---- Create AuditLog
+        |
+        v
+COMMIT
+        |
+        v
+Return Success
+```
+
+Agar operatsiyalardan biri xato bersa, butun transaction rollback qilinadi.
+
+## 8.3. Stock Out Workflow
+
+```text
+Select Warehouse
+      |
+      v
+Select Product
+      |
+      v
+Check Available Quantity
+      |
+      v
+Enter Quantity
+      |
+      v
+Submit Stock Out
+      |
+      v
+Backend validates stock
+      |
+      v
+Atomic Database Transaction
+      |
+      v
+Decrease Inventory
+      |
+      v
+Create Stock Movement
+      |
+      v
+Create Audit Log
+      |
+      v
+Return Success
+```
+
+## 8.4. Transfer Workflow
+
+```text
+Source Warehouse
+       |
+       v
+Destination Warehouse
+       |
+       v
+Select Products
+       |
+       v
+Enter Quantities
+       |
+       v
+Create Transfer
+       |
+       v
+Confirm Transfer
+       |
+       v
+Validate Source Stock
+       |
+       v
+Database Transaction
+       |
+       +---- Decrease Source Inventory
+       |
+       +---- Increase Destination Inventory
+       |
+       +---- Create TRANSFER_OUT
+       |
+       +---- Create TRANSFER_IN
+       |
+       +---- Update Transfer Status
+       |
+       v
+COMMIT
+```
+
+---
+
+# PART 09. UI/UX REQUIREMENTS
+
+## 9.1. Design Direction
+
+InventoryPro zamonaviy SaaS dashboard ko‘rinishida ishlab chiqiladi.
+
+Design principles:
+- Minimalist interface.
+- Professional business design.
+- Clear visual hierarchy.
+- Consistent spacing.
+- Readable typography.
+- Accessible contrast.
+- Responsive layout.
+
+Tavsiya etiladigan ranglar:
+
+| Element | Color |
+|---|---|
+| Primary | #2563EB |
+| Background | #F8FAFC |
+| Surface | #FFFFFF |
+| Text Primary | #0F172A |
+| Text Secondary | #64748B |
+| Success | #16A34A |
+| Warning | #F59E0B |
+| Danger | #DC2626 |
+| Border | #E2E8F0 |
+
+## 9.2. Typography
+
+Tavsiya:
+- Inter.
+- Font sizes: 12px–32px.
+- Page title: 24px.
+- Section title: 18px.
+- Body: 14px.
+- Table text: 13–14px.
+
+## 9.3. Component Standards
+
+Qayta foydalaniladigan komponentlar:
+
+```text
+Button
+Input
+Select
+Textarea
+Modal
+Drawer
+Dropdown
+DataTable
+Pagination
+Badge
+Card
+StatCard
+SearchInput
+DatePicker
+ConfirmDialog
+EmptyState
+ErrorState
+Skeleton
+PageHeader
+Breadcrumb
+```
+
+Barcha sahifalarda bir xil UI standartlari ishlatilishi kerak.
+
+## 9.4. Table Standards
+
+Barcha asosiy jadvallarda:
+
+- Server-side pagination.
+- Search.
+- Filter.
+- Sorting.
+- Loading state.
+- Empty state.
+- Error state.
+- Responsive behavior.
+
+## 9.5. Accessibility
+
+- Inputlarda label bo‘lishi kerak.
+- Buttonlar keyboard orqali boshqarilishi kerak.
+- Focus state ko‘rinishi kerak.
+- Rangning o‘zi yagona status indikatori bo‘lmasligi kerak.
+- Form errorlar aniq ko‘rsatilishi kerak.
+
+---
+
+# PART 10. SECURITY & VALIDATION
+
+## 10.1. Authentication Security
+
+- Password plain text ko‘rinishida saqlanmaydi.
+- JWT secret environment variable orqali olinadi.
+- Refresh token hash holatida saqlanadi.
+- Token muddati tekshiriladi.
+- Logout tokenni bekor qiladi.
+
+## 10.2. Authorization
+
+Backend har bir himoyalangan endpointda:
+- User authentication.
+- User role.
+- Resource access.
+- Action permission.
+
+tekshiruvlarini amalga oshiradi.
+
+## 10.3. Input Validation
+
+Barcha requestlar Zod orqali tekshiriladi.
+
+Tekshiriladigan ma'lumotlar:
+- Email.
+- Password.
+- UUID.
+- Quantity.
+- Price.
+- Date.
+- Enum.
+- Pagination.
+- Search parameters.
+
+## 10.4. Rate Limiting
+
+Quyidagi endpointlarga rate limit qo‘llanadi:
+
+- Login.
+- Refresh.
+- Password-related endpoints.
+
+## 10.5. File Upload Security
+
+Mahsulot rasmi uchun:
+- JPEG.
+- PNG.
+- WEBP.
+
+Maksimal hajm: 5 MB.
+
+MIME type va haqiqiy fayl formati tekshiriladi.
+
+Fayl nomi server tomonidan generatsiya qilinadi.
+
+## 10.6. Database Security
+
+- SQL injection himoyasi.
+- Prisma parametrli querylaridan foydalanish.
+- Database credentials environment variable orqali boshqarish.
+- Production database public access'ini cheklash.
+- Regular backup.
+
+## 10.7. Inventory Integrity
+
+Eng muhim talab:
+
+**Hech qanday holatda inventory quantity manfiy bo‘lib qolmasligi kerak.**
+
+Buning uchun:
+- Database transaction.
+- Atomic update.
+- Row-level locking yoki mos serializable transaction strategiyasi.
+- Database CHECK constraint.
+- Concurrent request testlari.
+
+qo‘llanadi.
+
+Prisma transactionning o‘zi barcha concurrent stock operatsiyalarini avtomatik xavfsiz qilib bermaydi. Backend dasturchisi PostgreSQL darajasidagi concurrency masalasini ham hal qilishi shart.
+
+---
+
+# PART 11. TESTING REQUIREMENTS
+
+## 11.1. Backend Testing
+
+Backend dasturchisi quyidagilarni test qilishi kerak:
+
+**Authentication**
+- Correct login.
+- Incorrect password.
+- Invalid token.
+- Expired token.
+- Refresh token.
+- Logout.
+
+**Products**
+- Create product.
+- Duplicate SKU.
+- Invalid category.
+- Negative price.
+- Update product.
+- Deactivate product.
+
+**Inventory**
+- Stock In.
+- Stock Out.
+- Insufficient stock.
+- Transfer.
+- Invalid warehouse.
+- Negative stock prevention.
+- Concurrent stock requests.
+
+**Authorization**
+- Admin permissions.
+- Manager permissions.
+- Operator permissions.
+- Unauthorized access.
+
+Tavsiya etiladigan vositalar:
+- Vitest.
+- Supertest.
+- Postman.
+
+## 11.2. Frontend Testing
+
+Frontend dasturchisi:
+
+- Login form validation.
+- Protected routes.
+- API integration.
+- Products CRUD.
+- Search.
+- Filtering.
+- Pagination.
+- Stock In form.
+- Stock Out form.
+- Transfer form.
+- Loading states.
+- Error states.
+- Responsive layout.
+
+Tavsiya:
+- Vitest.
+- React Testing Library.
+- Playwright.
+
+## 11.3. Integration Testing
+
+Frontend va Backend birlashtirilganda:
+
+1. Login ishlashi.
+2. User role to‘g‘ri aniqlanishi.
+3. Product yaratish.
+4. Product tahrirlash.
+5. Product search.
+6. Inventory ko‘rsatish.
+7. Stock In bajarish.
+8. Stock Out bajarish.
+9. Transfer bajarish.
+10. Movement history ko‘rsatish.
+11. Dashboard statistikalarini yangilash.
+12. Unauthorized holatlarni tekshirish.
+
+## 11.4. Critical Test Scenario
+
+Boshlang‘ich holat:
+
+Laptop HP:
+- Main Warehouse: 20 dona.
+- Samarkand Warehouse: 5 dona.
+
+Operatsiyalar:
+
+1. Main Warehouse'ga 10 dona Stock In.
+2. Main Warehouse'dan 5 dona Stock Out.
+3. Main Warehouse'dan Samarkand'ga 8 dona Transfer.
+
+Yakuniy natija:
+
+| Warehouse | Initial | In | Out | Transfer | Final |
+|---|---:|---:|---:|---:|---:|
+| Main | 20 | +10 | -5 | -8 | 17 |
+| Samarkand | 5 | 0 | 0 | +8 | 13 |
+
+Umumiy stock:
+
+`17 + 13 = 30`
+
+Boshlang‘ich 25 dona + 10 dona kirim − 5 dona chiqim = 30 dona.
+
+Transfer umumiy stock miqdorini o‘zgartirmaydi.
+
+---
+
+# PART 12. DEPLOYMENT & DELIVERY
+
+## 12.1. Frontend Deployment
+
+Tavsiya:
+- Vercel.
+- Netlify.
+
+Build:
+
+```bash
+pnpm build
+```
+
+Environment:
+
+```env
+VITE_API_URL=https://your-api-domain.com/api/v1
+```
+
+## 12.2. Backend Deployment
+
+Tavsiya:
+- Render.
+- Railway.
+- VPS.
+
+Build:
+
+```bash
+pnpm build
+```
+
+Start:
+
+```bash
+pnpm start
+```
+
+Environment variables:
+
+```env
+NODE_ENV=production
+PORT=5050
+
+DATABASE_URL=postgresql://...
+
+JWT_ACCESS_SECRET=...
+JWT_REFRESH_SECRET=...
+
+FRONTEND_URL=https://your-frontend-domain.com
+```
+
+## 12.3. Database Deployment
+
+PostgreSQL production database.
+
+Talablar:
+- Migration.
+- Seed.
+- Backup.
+- Connection security.
+- Production credentials.
+
+Production'da schema push emas, migration workflow ishlatiladi.
+
+## 12.4. GitHub Requirements
+
+Frontend va Backend uchun alohida repository tavsiya qilinadi:
+
+```text
+inventorypro-frontend
+inventorypro-backend
+```
+
+Har bir repository:
+- README.md.
+- .env.example.
+- .gitignore.
+- package.json.
+- Source code.
+- Installation instructions.
+
+Git commitlar mazmunli bo‘lishi kerak.
+
+Masalan:
+
+```text
+feat: implement product management
+feat: add inventory API
+fix: prevent negative stock
+feat: integrate authentication
+refactor: improve dashboard architecture
+```
+
+## 12.5. Final Deliverables
+
+**Frontend developer topshiradi:**
+- React source code.
+- Responsive UI.
+- API integration.
+- Authentication.
+- Role-based UI.
+- Form validation.
+- Error handling.
+- Deployment link.
+- README.
+
+**Backend developer topshiradi:**
+- Express source code.
+- PostgreSQL database schema.
+- Prisma migrations.
+- REST API.
+- JWT authentication.
+- Role-based authorization.
+- Swagger documentation.
+- Validation.
+- Error handling.
+- Seed data.
+- Deployment link.
+- README.
+
+---
+
+# FINAL ACCEPTANCE CRITERIA
+
+Loyiha tayyor deb hisoblanishi uchun quyidagi talablar bajarilishi shart:
+
+| № | Requirement | Status |
+|---|---|---|
+| 1 | Login / Logout ishlaydi | Required |
+| 2 | Role-based access ishlaydi | Required |
+| 3 | Product CRUD ishlaydi | Required |
+| 4 | Category management ishlaydi | Required |
+| 5 | Warehouse management ishlaydi | Required |
+| 6 | Supplier management ishlaydi | Required |
+| 7 | Inventory to‘g‘ri hisoblanadi | Required |
+| 8 | Stock In ishlaydi | Required |
+| 9 | Stock Out ishlaydi | Required |
+| 10 | Transfer ishlaydi | Required |
+| 11 | Movement history ishlaydi | Required |
+| 12 | Low stock alert ishlaydi | Required |
+| 13 | Dashboard statistikasi to‘g‘ri | Required |
+| 14 | Reports ishlaydi | Required |
+| 15 | Responsive design | Required |
+| 16 | API Documentation mavjud | Required |
+| 17 | Backend validation mavjud | Required |
+| 18 | Error handling mavjud | Required |
+| 19 | Tests mavjud | Required |
+| 20 | Frontend va Backend deploy qilingan | Required |
+
+**Yakuniy natija:** InventoryPro — React frontend, Express backend va PostgreSQL database asosida ishlaydigan, bir nechta omborni boshqarish imkoniyatiga ega to‘liq Warehouse Management System.
